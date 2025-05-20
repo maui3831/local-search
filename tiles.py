@@ -4,7 +4,6 @@ import copy
 import time
 from rich import print
 from rich.table import Table
-from rich.console import Console
 
 
 class EightTilesPuzzle:
