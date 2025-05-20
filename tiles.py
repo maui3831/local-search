@@ -4,6 +4,7 @@ import copy
 import time
 from rich import print
 from rich.table import Table
+from rich.console import Console
 
 
 class EightTilesPuzzle:
@@ -107,13 +108,18 @@ class EightTilesPuzzle:
 
     def print_state(self):
         """Print the current state of the puzzle."""
-        table = Table(show_header=False, expand=False)
+        table = Table(show_header=False, expand=False, border_style="bright_blue")
 
         for i in range(3):
             table.add_column(justify="center")
 
         for row in self.state:
-            formatted_row = [str(cell) for cell in row]
+            formatted_row = []
+            for cell in row:
+                if cell == "#":
+                    formatted_row.append("[bright_cyan]#[/bright_cyan]")
+                else:
+                    formatted_row.append(str(cell))
             table.add_row(*formatted_row)
 
         print(table)
@@ -171,17 +177,22 @@ def simulated_annealing(
 
 def print_solution_path(moves_history):
     """Print the solution path."""
-    print(f"Solution found in {len(moves_history) - 1} moves:")
+    print(f"Solution found in [bold green]{len(moves_history) - 1}[/bold green] moves:")
 
     for i, state in enumerate(moves_history):
-        print(f"Move {i}:")
-        table = Table(show_header=False)
+        print(f"Move [cyan]{i}[/cyan]:")
+        table = Table(show_header=False, border_style="bright_blue")
 
         for j in range(3):
             table.add_column(justify="center")
 
         for row in state:
-            formatted_row = [str(cell) for cell in row]
+            formatted_row = []
+            for cell in row:
+                if cell == "#":
+                    formatted_row.append("[bright_cyan]#[/bright_cyan]")
+                else:
+                    formatted_row.append(str(cell))
             table.add_row(*formatted_row)
 
         print(table)
@@ -195,23 +206,28 @@ def main():
     # Create the puzzle
     puzzle = EightTilesPuzzle(initial_state)
 
-    print("Initial state:")
+    print("[bold yellow]Initial state:[/bold yellow]")
     puzzle.print_state()
 
-    print("Goal state:")
-    table = Table(show_header=False)
+    print("[bold yellow]Goal state:[/bold yellow]")
+    table = Table(show_header=False, border_style="bright_blue")
 
     for j in range(3):
         table.add_column(justify="center")
 
     for row in puzzle.goal_state:
-        formatted_row = [str(cell) for cell in row]
+        formatted_row = []
+        for cell in row:
+            if cell == "#":
+                formatted_row.append("[bright_cyan]#[/bright_cyan]")
+            else:
+                formatted_row.append(str(cell))
         table.add_row(*formatted_row)
 
     print(table)
     print()
 
-    print("Solving with simulated annealing...")
+    print("[bold cyan]Solving with simulated annealing...[/bold cyan]")
     start_time = time.time()
 
     # Parameters for simulated annealing
@@ -233,19 +249,19 @@ def main():
 
     if best_puzzle.is_goal():
         print(
-            f"Solution found in {iterations} iterations and {end_time - start_time:.2f} seconds!"
+            f"[bold green]Solution found[/bold green] in {iterations} iterations and {end_time - start_time:.2f} seconds!"
         )
-        print(f"Final heuristic value: {best_energy}")
+        print(f"Final heuristic value: [magenta]{best_energy}[/magenta]")
         print_solution_path(moves_history)
     else:
-        print(f"No solution found after {iterations} iterations.")
-        print(f"Best heuristic value achieved: {best_energy}")
-        print("Best state found:")
+        print(f"[bold red]No solution found[/bold red] after {iterations} iterations.")
+        print(f"Best heuristic value achieved: [magenta]{best_energy}[/magenta]")
+        print("[yellow]Best state found:[/yellow]")
         best_puzzle.print_state()
 
     # Try again with different parameters if no solution was found
     if not best_puzzle.is_goal():
-        print("Trying again with different parameters...")
+        print("[bold yellow]Trying again with different parameters...[/bold yellow]")
 
         # Different parameters for better exploration
         initial_temperature = 5.0  # Higher initial temperature
@@ -264,14 +280,16 @@ def main():
 
         if best_puzzle.is_goal():
             print(
-                f"Solution found in {iterations} iterations and {end_time - start_time:.2f} seconds!"
+                f"[bold green]Solution found[/bold green] in {iterations} iterations and {end_time - start_time:.2f} seconds!"
             )
-            print(f"Final heuristic value: {best_energy}")
+            print(f"Final heuristic value: [magenta]{best_energy}[/magenta]")
             print_solution_path(moves_history)
         else:
-            print(f"Still no solution found after {iterations} iterations.")
-            print(f"Best heuristic value achieved: {best_energy}")
-            print("Best state found:")
+            print(
+                f"[bold red]Still no solution found[/bold red] after {iterations} iterations."
+            )
+            print(f"Best heuristic value achieved: [magenta]{best_energy}[/magenta]")
+            print("[yellow]Best state found:[/yellow]")
             best_puzzle.print_state()
 
 
