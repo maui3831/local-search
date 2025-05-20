@@ -3,6 +3,7 @@ import math
 import copy
 import time
 from rich import print
+from rich.table import Table
 
 
 class EightTilesPuzzle:
@@ -106,9 +107,16 @@ class EightTilesPuzzle:
 
     def print_state(self):
         """Print the current state of the puzzle."""
+        table = Table(show_header=False, expand=False)
+
+        for i in range(3):
+            table.add_column(justify="center")
+
         for row in self.state:
-            print(row)
-        print()
+            formatted_row = [str(cell) for cell in row]
+            table.add_row(*formatted_row)
+
+        print(table)
 
 
 def simulated_annealing(
@@ -164,10 +172,19 @@ def simulated_annealing(
 def print_solution_path(moves_history):
     """Print the solution path."""
     print(f"Solution found in {len(moves_history) - 1} moves:")
+
     for i, state in enumerate(moves_history):
         print(f"Move {i}:")
+        table = Table(show_header=False)
+
+        for j in range(3):
+            table.add_column(justify="center")
+
         for row in state:
-            print(row)
+            formatted_row = [str(cell) for cell in row]
+            table.add_row(*formatted_row)
+
+        print(table)
         print()
 
 
@@ -182,8 +199,16 @@ def main():
     puzzle.print_state()
 
     print("Goal state:")
+    table = Table(show_header=False)
+
+    for j in range(3):
+        table.add_column(justify="center")
+
     for row in puzzle.goal_state:
-        print(row)
+        formatted_row = [str(cell) for cell in row]
+        table.add_row(*formatted_row)
+
+    print(table)
     print()
 
     print("Solving with simulated annealing...")
