@@ -6,17 +6,10 @@ import time
 
 class EightTilesPuzzle:
     def __init__(self, initial_state=None):
-        # If no initial state provided, use the default one
-        if initial_state is None:
-            # Default initial state with the blank as '#'
-            self.state = [[5, 1, 3], [4, 2, 8], [6, 7, "#"]]
-        else:
-            self.state = initial_state
-
-        # Goal state with the blank in the bottom right
+        self.state = (
+            initial_state if initial_state else [[5, 1, 3], [4, 2, 8], [6, 7, "#"]]
+        )
         self.goal_state = [[1, 2, 3], [4, 5, 6], [7, 8, "#"]]
-
-        # Find the position of the blank tile
         self.blank_pos = self._find_blank()
 
     def _find_blank(self):
@@ -199,7 +192,7 @@ def main():
     initial_temperature = 1.0
     cooling_rate = 0.995
     min_temperature = 0.01
-    max_iterations = 50000  # Increased for better chance of finding solution
+    max_iterations = 50000
 
     # Run simulated annealing
     best_puzzle, best_energy, iterations, moves_history = simulated_annealing(
