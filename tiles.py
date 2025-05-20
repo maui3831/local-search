@@ -2,6 +2,7 @@ import random
 import math
 import copy
 import time
+from rich import print
 
 
 class EightTilesPuzzle:
@@ -219,7 +220,7 @@ def main():
 
     # Try again with different parameters if no solution was found
     if not best_puzzle.is_goal():
-        print("\nTrying again with different parameters...")
+        print("Trying again with different parameters...")
 
         # Different parameters for better exploration
         initial_temperature = 5.0  # Higher initial temperature
