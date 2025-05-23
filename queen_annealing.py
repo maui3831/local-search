@@ -1,5 +1,5 @@
 """ 
-N-Queens GUI with Simulated Annealing
+N-Queens GUI with Simulated Annealing and Size Selection - Improved Layout
 """
 
 import pygame
@@ -9,12 +9,13 @@ import math
 import os
 
 # For reproducibility
-random.seed(42)  
+# random.seed(42)  
 
 class NQueensGUI:
     def __init__(self):
         pygame.init()
-        self.n = 4  # Fixed to 4x4
+        self.available_sizes = [4,5, 6,7, 8]
+        self.n = 4  # Default size
         self.solution = []
         self.current_state = []
         self.mode = "annealing"
@@ -22,19 +23,21 @@ class NQueensGUI:
         self.current_step = 0
         self.is_solving = False
         self.annealing_generator = None
+        self.is_fullscreen = False
         
         # Simulated Annealing parameters
         self.initial_temperature = 100.0
         self.cooling_rate = 0.95
         self.min_temperature = 0.1
-        self.max_iterations = 1000
+        self.max_iterations = 200_000
         self.current_temperature = self.initial_temperature
         self.current_iteration = 0
         self.best_state = None
         self.best_energy = float('inf')
         
-        self.CELL_SIZE = 120
-        self.BOARD_SIZE = self.CELL_SIZE * self.n
+        # Dynamic sizing based on board size
+        self.update_board_sizing()
+        
         self.BG_COLOR = (245, 246, 250)
         self.BOARD_BG = (220, 220, 220)
         self.GREEN = (118, 150, 86)
@@ -46,12 +49,27 @@ class NQueensGUI:
         self.BUTTON_TEXT = (255, 255, 255)
         self.FONT_COLOR = (44, 62, 80)
         self.PANEL_BG = (230, 230, 230)
-        self.WINDOW_WIDTH = 1200
-        self.WINDOW_HEIGHT = 800
+        self.SIZE_BUTTON_ACTIVE = (46, 204, 113)
+        self.SIZE_BUTTON_INACTIVE = (149, 165, 166)
+        
+        self.WINDOW_WIDTH = 1600
+        self.WINDOW_HEIGHT = 1000
         self.screen = pygame.display.set_mode((self.WINDOW_WIDTH, self.WINDOW_HEIGHT))
-        pygame.display.set_caption("4-Queens Simulated Annealing Visualizer")
+        pygame.display.set_caption("N-Queens Simulated Annealing Visualizer")
         self.load_assets()
         self.init_ui_elements()
+
+    def update_board_sizing(self):
+        """Update board sizing based on current n value - now much larger"""
+        # Make board much larger to utilize center-left space
+        if self.n <= 4:
+            self.CELL_SIZE = 140
+        elif self.n <= 6:
+            self.CELL_SIZE = 110
+        else:
+            self.CELL_SIZE = 80
+        
+        self.BOARD_SIZE = self.CELL_SIZE * self.n
 
     def load_assets(self):
         pygame.mixer.init()
@@ -65,22 +83,79 @@ class NQueensGUI:
 
     def init_ui_elements(self):
         self.font = pygame.font.SysFont('Segoe UI', 36)
-        self.small_font = pygame.font.SysFont('Segoe UI', 24)
-        self.info_font = pygame.font.SysFont('Segoe UI', 20)
-        # Center board
-        self.board_x = 100
-        self.board_y = 100
-        # Side panel
-        self.panel_x = self.board_x + self.BOARD_SIZE + 50
+        self.small_font = pygame.font.SysFont('Segoe UI', 22)
+        self.info_font = pygame.font.SysFont('Segoe UI', 18)
+        self.size_font = pygame.font.SysFont('Segoe UI', 16)
+        
+        # Calculate safe margins based on screen size
+        margin_left = 80
+        margin_top = 120
+        
+        # Ensure board doesn't cover size buttons by adding extra top margin if needed
+        min_board_y = margin_top + 40  # Space for size buttons + padding
+        
+        # Center-left board positioning with proper spacing
+        self.board_x = margin_left
+        self.board_y = max(min_board_y, (self.WINDOW_HEIGHT - self.BOARD_SIZE) // 2)
+        
+        # Ensure board doesn't go off screen
+        if self.board_y + self.BOARD_SIZE > self.WINDOW_HEIGHT - 100:
+            self.board_y = self.WINDOW_HEIGHT - self.BOARD_SIZE - 100
+        
+        # Right side panel - positioned relative to board
+        self.panel_x = self.board_x + self.BOARD_SIZE + 80
         self.panel_y = self.board_y
-        self.panel_width = 300
-        self.panel_height = self.BOARD_SIZE
-        # Buttons
-        self.annealing_rect = pygame.Rect(100, 700, 220, 54)
-        self.solve_rect = pygame.Rect(350, 700, 180, 54)
-        self.reset_rect = pygame.Rect(550, 700, 180, 54)
-        self.prev_step_rect = pygame.Rect(100, 620, 220, 54)
-        self.next_step_rect = pygame.Rect(550, 620, 220, 54)
+        self.panel_width = min(280, self.WINDOW_WIDTH - self.panel_x - 40)  # Ensure panel fits
+        self.panel_height = min(500, self.WINDOW_HEIGHT - self.panel_y - 200)  # Leave space for buttons
+        
+        # Size selection buttons (top of screen) - always at fixed position
+        self.size_buttons = {}
+        button_width = 70
+        button_height = 35
+        start_x = margin_left
+        start_y = 60
+        
+        for i, size in enumerate(self.available_sizes):
+            x = start_x + i * (button_width + 15)
+            self.size_buttons[size] = pygame.Rect(x, start_y, button_width, button_height)
+        
+        # Control buttons - repositioned to right side in 2x2 grid
+        button_width = 120
+        button_height = 45
+        buttons_start_x = self.panel_x + 20
+        buttons_start_y = self.panel_y + self.panel_height + 30
+        
+        # Ensure buttons don't go off screen
+        if buttons_start_y + button_height * 2 + 15 > self.WINDOW_HEIGHT - 50:
+            buttons_start_y = self.WINDOW_HEIGHT - button_height * 2 - 65
+        
+        # Top row buttons
+        self.solve_rect = pygame.Rect(buttons_start_x, buttons_start_y, button_width, button_height)
+        self.reset_rect = pygame.Rect(buttons_start_x + button_width + 15, buttons_start_y, button_width, button_height)
+        
+        # Bottom row buttons
+        self.prev_step_rect = pygame.Rect(buttons_start_x, buttons_start_y + button_height + 15, button_width, button_height)
+        self.next_step_rect = pygame.Rect(buttons_start_x + button_width + 15, buttons_start_y + button_height + 15, button_width, button_height)
+        
+        # Fullscreen button (top right)
+        self.fullscreen_rect = pygame.Rect(self.WINDOW_WIDTH - 120, 20, 100, 35)
+
+    def toggle_fullscreen(self):
+        """Toggle between fullscreen and windowed mode"""
+        self.is_fullscreen = not self.is_fullscreen
+        if self.is_fullscreen:
+            self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+            # Get actual fullscreen dimensions
+            info = pygame.display.Info()
+            self.WINDOW_WIDTH = info.current_w
+            self.WINDOW_HEIGHT = info.current_h
+        else:
+            self.WINDOW_WIDTH = 1600
+            self.WINDOW_HEIGHT = 1000
+            self.screen = pygame.display.set_mode((self.WINDOW_WIDTH, self.WINDOW_HEIGHT))
+        
+        # Reinitialize UI elements with new dimensions
+        self.init_ui_elements()
 
     def count_attacks(self, state):
         """Count the number of pairs of queens that are attacking each other"""
@@ -182,6 +257,19 @@ class NQueensGUI:
         self.is_solving = False
         yield
 
+    def change_board_size(self, new_size):
+        """Change the board size and reset the game"""
+        if new_size == self.n or self.is_solving:
+            return
+        
+        self.n = new_size
+        self.update_board_sizing()
+        self.init_ui_elements()  # Reinitialize UI elements with new sizing
+        self.current_state = []
+        self.steps = []
+        self.current_step = 0
+        self.move_sound.play()
+
     def draw_board(self):
         pygame.draw.rect(self.screen, self.BOARD_BG, 
                         (self.board_x-8, self.board_y-8, self.BOARD_SIZE+16, self.BOARD_SIZE+16), 
@@ -199,9 +287,11 @@ class NQueensGUI:
 
     def draw_queen(self, row, col):
         img = pygame.image.load("./assets/n_queens/queen.png")
-        img = pygame.transform.smoothscale(img, (self.CELL_SIZE-18, self.CELL_SIZE-18))
-        x = self.board_x + col * self.CELL_SIZE + 9
-        y = self.board_y + row * self.CELL_SIZE + 9
+        # Scale queen image based on cell size
+        queen_size = max(30, self.CELL_SIZE - 20)
+        img = pygame.transform.smoothscale(img, (queen_size, queen_size))
+        x = self.board_x + col * self.CELL_SIZE + (self.CELL_SIZE - queen_size) // 2
+        y = self.board_y + row * self.CELL_SIZE + (self.CELL_SIZE - queen_size) // 2
         self.screen.blit(img, (x, y))
 
     def draw_button(self, text, rect, enabled=True):
@@ -215,17 +305,52 @@ class NQueensGUI:
         text_rect = text_surf.get_rect(center=rect.center)
         self.screen.blit(text_surf, text_rect)
 
+    def draw_size_buttons(self):
+        """Draw the size selection buttons"""
+        # Title for size selection
+        size_title = self.info_font.render("Board Size:", True, self.FONT_COLOR)
+        self.screen.blit(size_title, (80, 35))
+        
+        mouse_pos = pygame.mouse.get_pos()
+        
+        for size, rect in self.size_buttons.items():
+            # Determine button color
+            is_active = (size == self.n)
+            is_hover = rect.collidepoint(mouse_pos) and not self.is_solving
+            
+            if is_active:
+                color = self.SIZE_BUTTON_ACTIVE
+            elif is_hover:
+                color = self.BUTTON_HOVER
+            else:
+                color = self.SIZE_BUTTON_INACTIVE
+            
+            # Draw button
+            pygame.draw.rect(self.screen, color, rect, border_radius=8)
+            
+            # Draw text
+            text = f"{size}x{size}"
+            text_color = self.BUTTON_TEXT if (is_active or is_hover) else self.FONT_COLOR
+            text_surf = self.size_font.render(text, True, text_color)
+            text_rect = text_surf.get_rect(center=rect.center)
+            self.screen.blit(text_surf, text_rect)
+
     def draw_side_panel(self):
         # Draw panel background
         pygame.draw.rect(self.screen, self.PANEL_BG, 
                         (self.panel_x, self.panel_y, self.panel_width, self.panel_height),
                         border_radius=10)
         
-        y = self.panel_y + 20
+        y = self.panel_y + 15
         # Title
-        title = self.info_font.render("Simulated Annealing Info", True, self.FONT_COLOR)
-        self.screen.blit(title, (self.panel_x + 20, y))
-        y += 40
+        title = self.info_font.render("Simulated Annealing", True, self.FONT_COLOR)
+        self.screen.blit(title, (self.panel_x + 15, y))
+        y += 35
+
+        # Current board info
+        board_info = self.info_font.render(f"Board: {self.n}x{self.n}", True, self.FONT_COLOR)
+        self.screen.blit(board_info, (self.panel_x + 15, y))
+        y += 25
 
         # Parameters
         params = [
@@ -236,41 +361,69 @@ class NQueensGUI:
         ]
         
         for param in params:
-            text = self.info_font.render(param, True, self.FONT_COLOR)
-            self.screen.blit(text, (self.panel_x + 20, y))
-            y += 30
+            text = self.size_font.render(param, True, self.FONT_COLOR)
+            self.screen.blit(text, (self.panel_x + 15, y))
+            y += 20
 
-        y += 20
+        y += 15
         # Current state info
         if self.steps:
             step = self.steps[self.current_step]
             info = [
                 f"Step: {self.current_step + 1}/{len(self.steps)}",
-                f"Status: {step['description']}",
+                f"Status: {step['description'][:25]}{'...' if len(step['description']) > 25 else ''}",
                 f"Attacks: {step['energy']}"
             ]
             for text in info:
-                text_surf = self.info_font.render(text, True, self.FONT_COLOR)
-                self.screen.blit(text_surf, (self.panel_x + 20, y))
-                y += 30
+                text_surf = self.size_font.render(text, True, self.FONT_COLOR)
+                self.screen.blit(text_surf, (self.panel_x + 15, y))
+                y += 20
 
         # Current temperature and iteration
         if self.is_solving:
-            y += 20
+            y += 15
             current_info = [
                 f"Current Temp: {self.current_temperature:.2f}",
                 f"Iteration: {self.current_iteration}"
             ]
             for text in current_info:
-                text_surf = self.info_font.render(text, True, self.FONT_COLOR)
-                self.screen.blit(text_surf, (self.panel_x + 20, y))
-                y += 30
+                text_surf = self.size_font.render(text, True, self.FONT_COLOR)
+                self.screen.blit(text_surf, (self.panel_x + 15, y))
+                y += 20
+
+        # Instructions
+        y += 25
+        instructions = [
+            "Instructions:",
+            "1. Select board size above",
+            "2. Click squares to place queens",
+            f"3. Place all {self.n} queens (one per column)",
+            "4. Click 'Solve' to start annealing",
+            "5. Use step buttons to review"
+        ]
+        
+        for i, instruction in enumerate(instructions):
+            font = self.size_font
+            color = self.FONT_COLOR if i == 0 else (100, 100, 100)
+            text_surf = font.render(instruction, True, color)
+            if i == 0:
+                y += 5
+            self.screen.blit(text_surf, (self.panel_x + 15, y))
+            y += 18
 
     def draw_ui(self):
         self.screen.fill(self.BG_COLOR)
+        
         # Title
-        title = self.font.render("4-Queens Simulated Annealing", True, self.FONT_COLOR)
-        self.screen.blit(title, (self.WINDOW_WIDTH//2 - title.get_width()//2, 30))
+        title = self.font.render("N-Queens Simulated Annealing", True, self.FONT_COLOR)
+        title_x = (self.WINDOW_WIDTH - title.get_width()) // 2
+        self.screen.blit(title, (title_x, 20))
+        
+        # Fullscreen button
+        self.draw_button("Fullscreen" if not self.is_fullscreen else "Windowed", self.fullscreen_rect, True)
+        
+        # Draw size selection buttons
+        self.draw_size_buttons()
         
         # Draw board
         self.draw_board()
@@ -280,19 +433,29 @@ class NQueensGUI:
         # Draw side panel
         self.draw_side_panel()
         
-        # Draw buttons
-        self.draw_button("Simulated Annealing", self.annealing_rect, True)
+        # Draw control buttons in 2x2 grid on right side
         self.draw_button("Solve", self.solve_rect, len(self.current_state) == self.n and not self.is_solving)
         self.draw_button("Reset", self.reset_rect, not self.is_solving)
-        self.draw_button("Previous Step", self.prev_step_rect, self.current_step > 0 and not self.is_solving)
+        self.draw_button("Prev Step", self.prev_step_rect, self.current_step > 0 and not self.is_solving)
         self.draw_button("Next Step", self.next_step_rect, self.current_step < len(self.steps) - 1 and not self.is_solving)
 
     def handle_click(self, pos):
         if self.is_solving:
             return
-        if self.annealing_rect.collidepoint(pos):
-            self.mode = "annealing"
-        elif self.solve_rect.collidepoint(pos) and len(self.current_state) == self.n:
+            
+        # Check fullscreen button
+        if self.fullscreen_rect.collidepoint(pos):
+            self.toggle_fullscreen()
+            return
+            
+        # Check size button clicks
+        for size, rect in self.size_buttons.items():
+            if rect.collidepoint(pos):
+                self.change_board_size(size)
+                return
+        
+        # Check control button clicks
+        if self.solve_rect.collidepoint(pos) and len(self.current_state) == self.n:
             self.annealing_generator = self.simulated_annealing()
             self.is_solving = True
             self.premove_sound.play()
@@ -314,11 +477,22 @@ class NQueensGUI:
             self.current_state = self.steps[self.current_step]['state'].copy()
         elif (self.board_x <= pos[0] < self.board_x + self.BOARD_SIZE and
               self.board_y <= pos[1] < self.board_y + self.BOARD_SIZE):
+            # Handle board clicks
             col = (pos[0] - self.board_x) // self.CELL_SIZE
             row = (pos[1] - self.board_y) // self.CELL_SIZE
-            if not any(q[1] == col for q in self.current_state) and len(self.current_state) < self.n:
-                self.current_state.append((row, col))
-                self.move_sound.play()
+            
+            # Ensure click is within board bounds
+            if 0 <= row < self.n and 0 <= col < self.n:
+                if not any(q[1] == col for q in self.current_state) and len(self.current_state) < self.n:
+                    self.current_state.append((row, col))
+                    self.move_sound.play()
+
+    def handle_keypress(self, key):
+        """Handle keyboard shortcuts"""
+        if key == pygame.K_F11 or key == pygame.K_F:
+            self.toggle_fullscreen()
+        elif key == pygame.K_ESCAPE and self.is_fullscreen:
+            self.toggle_fullscreen()
 
     def run(self):
         clock = pygame.time.Clock()
@@ -328,6 +502,11 @@ class NQueensGUI:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE and self.is_fullscreen:
+                        self.toggle_fullscreen()
+                    elif event.key == pygame.K_F11:
+                        self.toggle_fullscreen()
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     self.handle_click(event.pos)
 
