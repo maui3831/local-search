@@ -55,6 +55,8 @@ class NQueensGUI:
         self.move_sound = pygame.mixer.Sound("./assets/n_queens/move.mp3")
         self.error_sound = pygame.mixer.Sound("./assets/n_queens/incorrect.mp3")
         self.win_sound = pygame.mixer.Sound("./assets/n_queens/finish.mp3")
+        self.premove_sound = pygame.mixer.Sound("./assets/n_queens/premove.mp3")
+        self.gameend_sound = pygame.mixer.Sound("./assets/n_queens/game-end.mp3")
         self.icon = pygame.image.load("./assets/n_queens/icon.png")
         pygame.display.set_icon(self.icon)
 
@@ -161,8 +163,10 @@ class NQueensGUI:
         # Record final state
         if self.best_energy == 0:
             self.record_step(self.best_state, self.best_energy, "Solution Found!")
+            self.gameend_sound.play()
             self.win_sound.play()
         else:
+            self.gameend_sound.play()
             self.record_step(self.best_state, self.best_energy, 
                            f"Best State Found (Energy: {self.best_energy})")
         
@@ -282,6 +286,7 @@ class NQueensGUI:
         elif self.solve_rect.collidepoint(pos) and len(self.current_state) == self.n:
             self.annealing_generator = self.simulated_annealing()
             self.is_solving = True
+            self.premove_sound.play()
         elif self.reset_rect.collidepoint(pos):
             self.current_state = []
             self.steps = []
@@ -289,9 +294,11 @@ class NQueensGUI:
         elif self.prev_step_rect.collidepoint(pos) and self.current_step > 0:
             self.current_step -= 1
             self.current_state = self.steps[self.current_step]['state'].copy()
+            self.premove_sound.play()
         elif self.next_step_rect.collidepoint(pos) and self.current_step < len(self.steps) - 1:
             self.current_step += 1
             self.current_state = self.steps[self.current_step]['state'].copy()
+            self.premove_sound.play()
         elif (self.board_x <= pos[0] < self.board_x + self.BOARD_SIZE and
               self.board_y <= pos[1] < self.board_y + self.BOARD_SIZE):
             col = (pos[0] - self.board_x) // self.CELL_SIZE
@@ -331,7 +338,9 @@ def main():
         "./assets/n_queens/move.mp3",
         "./assets/n_queens/incorrect.mp3",
         "./assets/n_queens/finish.mp3",
-        "./assets/n_queens/queen.png"
+        "./assets/n_queens/queen.png",
+        "./assets/n_queens/premove.mp3",
+        "./assets/n_queens/game-end.mp3"
     ]
     
     for f in required_files:
