@@ -1,0 +1,115 @@
+N-Queens Problem using Simulated Annealing - Pseudo Code
+====================================================
+
+Problem Description:
+-------------------
+Place N queens on an NxN chessboard so that no two queens can attack each other.
+A queen can attack another queen if they are in the same row, column, or diagonal.
+
+Algorithm Overview:
+------------------
+Simulated Annealing is a probabilistic optimization algorithm that mimics the process of annealing in metallurgy.
+It starts with a high "temperature" that allows the algorithm to accept worse solutions, and gradually "cools down"
+to become more selective, focusing on finding better solutions.
+
+1. Algorithm Parameters:
+   --------------------
+   - Initial temperature (T) = 100.0    // High temperature allows more exploration
+   - Cooling rate = 0.95                // How quickly the temperature decreases
+   - Minimum temperature = 0.1          // When to stop the algorithm
+   - Maximum iterations = 1000          // Maximum number of steps to try
+   - Board size (n) = 4x4              // Size of the chessboard
+
+2. Main Algorithm:
+   --------------
+   Function SimulatedAnnealing():
+       // Start with a random arrangement of queens
+       current_state = random_initial_state()
+       best_state = current_state
+       best_energy = count_attacks(best_state)  // Count how many queens are attacking each other
+       temperature = initial_temperature
+       iteration = 0
+
+       // Continue until we find a solution or reach stopping conditions
+       While (temperature > min_temperature AND 
+              iteration < max_iterations AND 
+              best_energy > 0):
+           
+           // Try a new arrangement by moving one queen
+           neighbor = get_random_neighbor(current_state)
+           neighbor_energy = count_attacks(neighbor)
+           
+           // Calculate if the new arrangement is better or worse
+           energy_diff = neighbor_energy - best_energy
+           
+           // Accept the new arrangement if:
+           // 1. It's better (energy_diff < 0), OR
+           // 2. With a probability based on temperature (allows escaping local optima)
+           If (energy_diff < 0 OR random() < exp(-energy_diff/temperature)):
+               current_state = neighbor
+               // Update best solution if we found a better one
+               If (neighbor_energy < best_energy):
+                   best_state = neighbor
+                   best_energy = neighbor_energy
+           
+           // Reduce temperature to become more selective
+           temperature *= cooling_rate
+           iteration += 1
+
+3. Helper Functions:
+   ----------------
+   Function count_attacks(state):
+       // Count how many pairs of queens are attacking each other
+       attacks = 0
+       For i = 0 to n-1:
+           For j = i+1 to n-1:
+               // Queens attack if in same row
+               If state[i].row == state[j].row:
+                   attacks += 1
+               // Queens attack if in same diagonal
+               If |state[i].row - state[j].row| == |state[i].col - state[j].col|:
+                   attacks += 1
+       Return attacks
+
+   Function get_random_neighbor(state):
+       // Create a new state by moving one queen to a random position
+       new_state = copy(state)
+       queen_idx = random(0, n-1)      // Pick a random queen
+       new_row = random(0, n-1)        // Pick a random row
+       new_state[queen_idx] = (new_row, queen_idx)
+       Return new_state
+
+4. User Interface:
+   --------------
+   The program provides a visual interface with:
+   - A 4x4 chessboard showing queen positions
+   - Queen pieces that can be placed manually
+   - Control buttons:
+     * Simulated Annealing: Start the algorithm
+     * Solve: Begin solving from current state
+     * Reset: Clear the board
+     * Previous/Next Step: Navigate through solution steps
+   - Information panel showing:
+     * Current algorithm parameters
+     * Temperature and iteration count
+     * Number of attacking queens
+     * Step-by-step progress
+
+5. Solution Process:
+   ----------------
+   1. Start with initial state (either empty or user-placed queens)
+   2. For each iteration:
+      - Show current arrangement of queens
+      - Display current temperature and iteration
+      - Highlight when a better solution is found
+      - Record each step for later review
+   3. End when:
+      - A solution is found (no attacking queens)
+      - Temperature becomes too low
+      - Maximum iterations reached
+
+6. Success Criteria:
+   ----------------
+   The algorithm succeeds when:
+   - No queens are attacking each other (energy = 0)
+   - OR the best possible arrangement is found 

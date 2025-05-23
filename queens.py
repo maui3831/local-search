@@ -38,7 +38,8 @@ class NQueensGUI:
         self.BUTTON_DISABLED = (189, 195, 199)
         self.BUTTON_TEXT = (255, 255, 255)
         self.FONT_COLOR = (44, 62, 80)
-        self.WINDOW_WIDTH = 1000
+        self.PANEL_BG = (230, 230, 230)
+        self.WINDOW_WIDTH = 1200  # Increased width for side panel
         self.WINDOW_HEIGHT = 800
         self.screen = pygame.display.set_mode((self.WINDOW_WIDTH, self.WINDOW_HEIGHT))
         pygame.display.set_caption("4-Queens Genetic Algorithm Visualizer")
@@ -56,13 +57,21 @@ class NQueensGUI:
     def init_ui_elements(self):
         self.font = pygame.font.SysFont('Segoe UI', 36)
         self.small_font = pygame.font.SysFont('Segoe UI', 24)
-        self.board_x = (self.WINDOW_WIDTH - self.BOARD_SIZE) // 2
+        self.info_font = pygame.font.SysFont('Segoe UI', 20)
+        # Center board
+        self.board_x = 100  # Moved board to the left
         self.board_y = 100
-        self.genetic_rect = pygame.Rect(120, 700, 220, 54)
-        self.solve_rect = pygame.Rect(370, 700, 180, 54)
-        self.reset_rect = pygame.Rect(580, 700, 180, 54)
-        self.prev_step_rect = pygame.Rect(120, 620, 220, 54)
-        self.next_step_rect = pygame.Rect(580, 620, 220, 54)
+        # Side panel
+        self.panel_x = self.board_x + self.BOARD_SIZE + 50
+        self.panel_y = self.board_y
+        self.panel_width = 300
+        self.panel_height = self.BOARD_SIZE
+        # Buttons
+        self.genetic_rect = pygame.Rect(100, 700, 220, 54)
+        self.solve_rect = pygame.Rect(350, 700, 180, 54)
+        self.reset_rect = pygame.Rect(550, 700, 180, 54)
+        self.prev_step_rect = pygame.Rect(100, 620, 220, 54)
+        self.next_step_rect = pygame.Rect(550, 620, 220, 54)
 
     def count_attacks(self, state):
         attacks = 0
@@ -124,15 +133,23 @@ class NQueensGUI:
         yield
         
         while self.current_generation < self.generations and not self.solution_found:
+            # Record start of generation
+            self.record_step(self.current_state, self.fitness(self.current_state),
+                           f"Generation {self.current_generation + 1} - Start")
+            yield
+            
+            # Evaluate fitness for all individuals
             fitness_scores = [(state, self.fitness(state)) for state in self.population]
             best_state = max(fitness_scores, key=lambda x: x[1])
             self.best_fitness_history.append(best_state[1])
             
-            # Record current best state
+            # Record best state in current generation
             self.record_step(best_state[0], best_state[1], 
-                           f"Generation {self.current_generation + 1}")
+                           f"Generation {self.current_generation + 1} - Best State")
             self.current_state = best_state[0]
+            yield
             
+            # Check if solution found
             if best_state[1] == 0:
                 self.solution_found = True
                 self.record_step(best_state[0], best_state[1], "Solution Found!")
@@ -141,18 +158,36 @@ class NQueensGUI:
             
             # Create new population
             new_population = []
+            
+            # Elitism: Keep best individuals
             sorted_pop = sorted(fitness_scores, key=lambda x: x[1], reverse=True)
             new_population.extend([s for s, _ in sorted_pop[:self.elite_size]])
             
+            # Record elite selection
+            self.record_step(self.current_state, best_state[1],
+                           f"Generation {self.current_generation + 1} - Elite Selection")
+            yield
+            
+            # Create rest of new population
             while len(new_population) < self.population_size:
                 parent1 = self.select_parent(self.population)
                 parent2 = self.select_parent(self.population)
                 child = self.crossover(parent1, parent2)
                 child = self.mutate(child)
                 new_population.append(child)
+                
+                # Record every 5th child creation
+                if len(new_population) % 5 == 0:
+                    self.record_step(self.current_state, best_state[1],
+                                   f"Generation {self.current_generation + 1} - Creating Population ({len(new_population)}/{self.population_size})")
+                    yield
             
             self.population = new_population
             self.current_generation += 1
+            
+            # Record end of generation
+            self.record_step(self.current_state, best_state[1],
+                           f"Generation {self.current_generation} - Complete")
             yield
         
         self.is_solving = False
@@ -190,31 +225,78 @@ class NQueensGUI:
         y = self.board_y + row * self.CELL_SIZE + 9
         self.screen.blit(img, (x, y))
 
+    def draw_side_panel(self):
+        # Draw panel background
+        pygame.draw.rect(self.screen, self.PANEL_BG, 
+                        (self.panel_x, self.panel_y, self.panel_width, self.panel_height),
+                        border_radius=10)
+        
+        y = self.panel_y + 20
+        # Title
+        title = self.info_font.render("Genetic Algorithm Info", True, self.FONT_COLOR)
+        self.screen.blit(title, (self.panel_x + 20, y))
+        y += 40
+
+        # Parameters
+        params = [
+            f"Population Size: {self.population_size}",
+            f"Mutation Rate: {self.mutation_rate}",
+            f"Elite Size: {self.elite_size}",
+            f"Generation: {self.current_generation}/{self.generations}"
+        ]
+        
+        for param in params:
+            text = self.info_font.render(param, True, self.FONT_COLOR)
+            self.screen.blit(text, (self.panel_x + 20, y))
+            y += 30
+
+        y += 20
+        # Current state info
+        if self.steps:
+            step = self.steps[self.current_step]
+            info = [
+                f"Step: {self.current_step + 1}/{len(self.steps)}",
+                f"Status: {step['description']}",
+                f"Attacks: {-step['score']}"
+            ]
+            for text in info:
+                text_surf = self.info_font.render(text, True, self.FONT_COLOR)
+                self.screen.blit(text_surf, (self.panel_x + 20, y))
+                y += 30
+
+        # Best fitness history
+        if self.best_fitness_history:
+            y += 20
+            text = self.info_font.render("Best Fitness History:", True, self.FONT_COLOR)
+            self.screen.blit(text, (self.panel_x + 20, y))
+            y += 30
+            
+            # Show last 5 fitness values
+            for fitness in self.best_fitness_history[-5:]:
+                text = self.info_font.render(f"Attacks: {-fitness}", True, self.FONT_COLOR)
+                self.screen.blit(text, (self.panel_x + 20, y))
+                y += 25
+
     def draw_ui(self):
         self.screen.fill(self.BG_COLOR)
+        # Title
         title = self.font.render("4-Queens Genetic Algorithm", True, self.FONT_COLOR)
         self.screen.blit(title, (self.WINDOW_WIDTH//2 - title.get_width()//2, 30))
+        
+        # Draw board
         self.draw_board()
         for row, col in self.current_state:
             self.draw_queen(row, col)
+            
+        # Draw side panel
+        self.draw_side_panel()
+        
+        # Draw buttons
         self.draw_button("Genetic Algorithm", self.genetic_rect, True)
         self.draw_button("Solve", self.solve_rect, len(self.current_state) == self.n and not self.is_solving)
         self.draw_button("Reset", self.reset_rect, not self.is_solving)
         self.draw_button("Previous Step", self.prev_step_rect, self.current_step > 0 and not self.is_solving)
         self.draw_button("Next Step", self.next_step_rect, self.current_step < len(self.steps) - 1 and not self.is_solving)
-        
-        if self.steps:
-            step = self.steps[self.current_step]
-            y = self.board_y + self.BOARD_SIZE + 40
-            texts = [
-                f"Step {self.current_step + 1}/{len(self.steps)}",
-                step['description'],
-                f"Attacks: {-step['score']}"
-            ]
-            for text in texts:
-                text_surf = self.small_font.render(text, True, self.FONT_COLOR)
-                self.screen.blit(text_surf, (self.WINDOW_WIDTH//2 - text_surf.get_width()//2, y))
-                y += 32
 
     def handle_click(self, pos):
         if self.is_solving:
