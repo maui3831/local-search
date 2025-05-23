@@ -29,7 +29,7 @@ class NQueensGUI:
         self.initial_temperature = 100.0
         self.cooling_rate = 0.95
         self.min_temperature = 0.1
-        self.max_iterations = 1000
+        self.max_iterations = 200_000
         self.current_temperature = self.initial_temperature
         self.current_iteration = 0
         self.best_state = None
@@ -65,9 +65,9 @@ class NQueensGUI:
         if self.n <= 4:
             self.CELL_SIZE = 140
         elif self.n <= 6:
-            self.CELL_SIZE = 120
+            self.CELL_SIZE = 110
         else:
-            self.CELL_SIZE = 100
+            self.CELL_SIZE = 80
         
         self.BOARD_SIZE = self.CELL_SIZE * self.n
 
@@ -150,8 +150,8 @@ class NQueensGUI:
             self.WINDOW_WIDTH = info.current_w
             self.WINDOW_HEIGHT = info.current_h
         else:
-            self.WINDOW_WIDTH = 800
-            self.WINDOW_HEIGHT = 500
+            self.WINDOW_WIDTH = 1600
+            self.WINDOW_HEIGHT = 1000
             self.screen = pygame.display.set_mode((self.WINDOW_WIDTH, self.WINDOW_HEIGHT))
         
         # Reinitialize UI elements with new dimensions
