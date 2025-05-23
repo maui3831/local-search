@@ -8,6 +8,9 @@ import random
 import math
 import os
 
+# For reproducibility
+random.seed(42)  
+
 class NQueensGUI:
     def __init__(self):
         pygame.init()
@@ -128,6 +131,10 @@ class NQueensGUI:
                self.current_iteration < self.max_iterations and 
                self.best_energy > 0):
             
+            # Play premove sound during solving process (every 5th iteration to avoid spam)
+            if self.current_iteration % 5 == 0:
+                self.premove_sound.play()
+            
             # Record temperature and iteration info
             self.record_step(self.current_state, self.best_energy,
                            f"Temperature: {self.current_temperature:.2f}, Iteration: {self.current_iteration}")
@@ -146,6 +153,8 @@ class NQueensGUI:
                 if neighbor_energy < self.best_energy:
                     self.best_state = neighbor.copy()
                     self.best_energy = neighbor_energy
+                    # Play premove sound when finding better state
+                    self.premove_sound.play()
                     self.record_step(self.best_state, self.best_energy,
                                    f"New Best State Found! Energy: {self.best_energy}")
                     yield
@@ -163,13 +172,13 @@ class NQueensGUI:
         # Record final state
         if self.best_energy == 0:
             self.record_step(self.best_state, self.best_energy, "Solution Found!")
-            self.gameend_sound.play()
             self.win_sound.play()
         else:
-            self.gameend_sound.play()
             self.record_step(self.best_state, self.best_energy, 
                            f"Best State Found (Energy: {self.best_energy})")
         
+        # Always play game-end sound when solving process completes
+        self.gameend_sound.play()
         self.is_solving = False
         yield
 
@@ -296,9 +305,13 @@ class NQueensGUI:
             self.current_state = self.steps[self.current_step]['state'].copy()
             self.premove_sound.play()
         elif self.next_step_rect.collidepoint(pos) and self.current_step < len(self.steps) - 1:
+            # Check if this is the last step before incrementing
+            if self.current_step == len(self.steps) - 2:  # Moving to the last step
+                self.gameend_sound.play()
+            else:
+                self.premove_sound.play()
             self.current_step += 1
             self.current_state = self.steps[self.current_step]['state'].copy()
-            self.premove_sound.play()
         elif (self.board_x <= pos[0] < self.board_x + self.BOARD_SIZE and
               self.board_y <= pos[1] < self.board_y + self.BOARD_SIZE):
             col = (pos[0] - self.board_x) // self.CELL_SIZE
@@ -352,4 +365,4 @@ def main():
     gui.run()
 
 if __name__ == "__main__":
-    main() 
+    main()
